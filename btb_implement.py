@@ -24,6 +24,7 @@ G.add_weighted_edges_from(elist)
 # print(nx.dijkstra_path(G, {'a', 'b', 'c'}, {'e', 'f', 'g'}))
 
 
+
 print(nx.dijkstra_path(G, 'a', 'f'))
 '''
 # then add these nodes to a set of visited nodes
@@ -165,4 +166,10 @@ find_pd(pathway, visited, unvisited)
 print(P.edges)
 print(P.nodes)
 
-# 
+'''
+1. What is "score" mentioned? Is it just Equation 1?
+2. What is the objectives or goals of this algorithm? What is the algorithm trying to maximize or minimize?
+3. The structure of the BowTieBuilder algorithm is different from the description (step3). The structure says we are picking the shortest path while the description says we are picking the highest score. Which one is correct?
+4. Are they saying finding the maximum scoring path using the shortest path algorithm? If so, how do we do that? Why is Dijsktra's algorithm used? Are we just using the same greedy algorithm to find the maximum scoring path as Dijkstra's algorithm?
+4. Step 5: How do we update D based on P?
+'''
