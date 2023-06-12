@@ -29,31 +29,12 @@ source_set = (['a', 'b', 'c'])
 target_set = (['e', 'f', 'g'])
 G.add_weighted_edges_from(elist)  # add these and flag as unvisited
 
-# calculate the total number of sources x targets
-paths = len(source_set) * len(target_set)
-
 
 # determine nodes on path between sources and targets
 print(list(G.neighbors('a')))
 
-# calculate score of intermediate nodes:
+# calculate score of intermediate nodes?
 
-
-# calculate score for each node in the list, EXCLUDE the sources and targets
-def calculate_score(node):
-    source_connected = 0
-    target_connected = 0
-    if node not in source_set and node not in target_set:
-        for source in source_set:
-            if source in list(G.neighbors(node)):
-                source_connected += 1
-        for target in target_set:
-            if target in list(G.neighbors(node)):
-                target_connected += 1
-    return (source_connected*target_connected)/(len(source_set) * len(target_set))
-
-
-calculate_score('d')
 
 '''
 adjacancy_matrix = []
@@ -72,24 +53,7 @@ print(adjacancy_matrix)
 # print(nx.dijkstra_path_length(G, 'a', 'f'))
 # print(nx.dijkstra_path(G, 'a', 'f'))
 
-# nx.draw(G)
-
-'''
-# then add these nodes to a set of visited nodes
-#for e in list(G.edges):
-
-    # cannot iterate thru all source and target nodes yet
-   # for node in source_set:
-        #for target in target_set:
-            #if e in nx.dijkstra_path(G, node, target):
-                #P.add_edge(e)
 print(P)
-'''
-
-# maybe a better approach would be:
-# for e in list of edges
-# if e contains a node from the source set and a node from the target set
-# run dijkstra_path on (G, source, target)
 
 
 def btb_implement(S, T, G):
