@@ -7,40 +7,95 @@ source_file = Path("./source.txt")
 target_file = Path("./target.txt")
 
 G = nx.Graph()
+# G is the graph and P is a subgraph of: S intersects T
 P = nx.Graph()
 # Example with 10 nodes and 15 edges
 # In multi_adj: The first label in a line is the source node label followed by the node degree d.
 # The next d lines are target node labels and optional edge data.
 
+<< << << < Updated upstream
 # 1. Initialize a pathway P with all nodes and flag them as unvisited
 elist = [('a', 'b', 1.0), ('a', 'c', 2.0), ('b', 'd', 1.0), ('c', 'e', 1.0),
          ('b', 'e', 5.0), ('b', 'f', 3.0), ('c', 'k',
                                             1.0), ('d', 'e', 2.0), ('d', 'h', 1.0),
          ('d', 'i', 1.0), ('f', 'e', 9.0), ('g', 'e', 1.0), ('e', 'h', 1.0), ('k', 'h', 1.0), ('k', 'i', 1.0), ('k', 'a', 1.0)]
+== == == =
+
+# 1. Initialize a pathway P with all nodes and flag them as unvisited, having weights different from one another so there's no ties
+nodes = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'k', 'h', 'i')
+elist = [('a', 'b', 1.0), ('a', 'c', 0.4), ('b', 'd', 0.5), ('c', 'e', 0.7),
+         ('b', 'e', 0.8), ('b', 'f', 0.5), ('c', 'k',
+                                            0.3), ('d', 'e', 0.5), ('d', 'h', 0.2),
+         ('d', 'i', 1.0), ('f', 'e', 0.6), ('g', 'e', 0.1), ('e', 'h', 0.5), ('k', 'h', 0.7), ('k', 'i', 1.0)]
+
+>>>>>> > Stashed changes
 source_set = (['a', 'b', 'c'])
 target_set = (['e', 'f', 'g'])
-G.add_weighted_edges_from(elist)
+G.add_weighted_edges_from(elist)  # add these and flag as unvisited
 
+# calculate the total number of sources x targets
+paths = len(source_set) * len(target_set)
+
+
+# determine nodes on path between sources and targets
+print(list(G.neighbors('a')))
+
+# calculate score of intermediate nodes:
+
+
+# calculate score for each node in the list, EXCLUDE the sources and targets
+def calculate_score(node):
+    source_connected = 0
+    target_connected = 0
+    if node not in source_set and node not in target_set:
+        for source in source_set:
+            if source in list(G.neighbors(node)):
+                source_connected += 1
+        for target in target_set:
+            if target in list(G.neighbors(node)):
+                target_connected += 1
+    return (source_connected*target_connected)/(len(source_set) * len(target_set))
+
+
+calculate_score('d')
+
+'''
+adjacancy_matrix = []
+
+for source in source_set:
+    temp = []
+    for target in target_set:
+        temp.append(nx.dijkstra_path_length(G, source, target))
+    adjacancy_matrix.append(temp)
+
+print(adjacancy_matrix)
+'''
 # use Dijkstra’s algorithm to find the shortest weighted path between a and f (and repeat for all source and target nodes as well)
 # print(nx.dijkstra_path(G, {'a', 'b', 'c'}, {'e', 'f', 'g'}))
 
+# print(nx.dijkstra_path_length(G, 'a', 'f'))
+# print(nx.dijkstra_path(G, 'a', 'f'))
 
 print(nx.dijkstra_path(G, 'a', 'f'))
+# nx.draw(G)
+
 '''
 # then add these nodes to a set of visited nodes
 #for e in list(G.edges):
 
     # cannot iterate thru all source and target nodes yet
    # for node in source_set:
-        for target in target_set:
-            if e in nx.dijkstra_path(G, node, target):
-                P.add_edge(e)
+        #for target in target_set:
+            #if e in nx.dijkstra_path(G, node, target):
+                #P.add_edge(e)
 print(P)
 '''
 print(G.is_directed())
 
 # print all a's neighbors
 print(list(G.neighbors('a')))
+
+<< << << < Updated upstream
 
 
 def btb_implement(S, T, G):
@@ -107,3 +162,16 @@ def btb_implement(S, T, G):
 
     # Step 7: Export final pathway P
     return P
+
+
+== == == =
+# approach that makes more sense:
+
+'''
+Methods
+Protein-protein interaction (PPI) data
+The PPI dataset is represented as a weighted directed graph G = (V, E, w),
+where nodes (V) represent proteins, edges (E) PPIs, and the scores (w) the confidence in each interaction.
+The scores (edge weight w) range from 0, indicating no interaction, to 1, indicating an interaction with high confidence.
+'''
+>>>>>> > Stashed changes
