@@ -1,5 +1,9 @@
+from scipy.sparse.csgraph import dijkstra
+import numpy as np
 import networkx as nx
 from pathlib import Path
+
+import pandas as pd
 
 
 # read in source and target sets
@@ -13,13 +17,6 @@ P = nx.Graph()
 # In multi_adj: The first label in a line is the source node label followed by the node degree d.
 # The next d lines are target node labels and optional edge data.
 
-<< << << < Updated upstream
-# 1. Initialize a pathway P with all nodes and flag them as unvisited
-elist = [('a', 'b', 1.0), ('a', 'c', 2.0), ('b', 'd', 1.0), ('c', 'e', 1.0),
-         ('b', 'e', 5.0), ('b', 'f', 3.0), ('c', 'k',
-                                            1.0), ('d', 'e', 2.0), ('d', 'h', 1.0),
-         ('d', 'i', 1.0), ('f', 'e', 9.0), ('g', 'e', 1.0), ('e', 'h', 1.0), ('k', 'h', 1.0), ('k', 'i', 1.0), ('k', 'a', 1.0)]
-== == == =
 
 # 1. Initialize a pathway P with all nodes and flag them as unvisited, having weights different from one another so there's no ties
 nodes = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'k', 'h', 'i')
@@ -28,7 +25,6 @@ elist = [('a', 'b', 1.0), ('a', 'c', 0.4), ('b', 'd', 0.5), ('c', 'e', 0.7),
                                             0.3), ('d', 'e', 0.5), ('d', 'h', 0.2),
          ('d', 'i', 1.0), ('f', 'e', 0.6), ('g', 'e', 0.1), ('e', 'h', 0.5), ('k', 'h', 0.7), ('k', 'i', 1.0)]
 
->>>>>> > Stashed changes
 source_set = (['a', 'b', 'c'])
 target_set = (['e', 'f', 'g'])
 G.add_weighted_edges_from(elist)  # add these and flag as unvisited
@@ -76,7 +72,6 @@ print(adjacancy_matrix)
 # print(nx.dijkstra_path_length(G, 'a', 'f'))
 # print(nx.dijkstra_path(G, 'a', 'f'))
 
-print(nx.dijkstra_path(G, 'a', 'f'))
 # nx.draw(G)
 
 '''
@@ -90,12 +85,11 @@ print(nx.dijkstra_path(G, 'a', 'f'))
                 #P.add_edge(e)
 print(P)
 '''
-print(G.is_directed())
 
-# print all a's neighbors
-print(list(G.neighbors('a')))
-
-<< << << < Updated upstream
+# maybe a better approach would be:
+# for e in list of edges
+# if e contains a node from the source set and a node from the target set
+# run dijkstra_path on (G, source, target)
 
 
 def btb_implement(S, T, G):
@@ -162,16 +156,3 @@ def btb_implement(S, T, G):
 
     # Step 7: Export final pathway P
     return P
-
-
-== == == =
-# approach that makes more sense:
-
-'''
-Methods
-Protein-protein interaction (PPI) data
-The PPI dataset is represented as a weighted directed graph G = (V, E, w),
-where nodes (V) represent proteins, edges (E) PPIs, and the scores (w) the confidence in each interaction.
-The scores (edge weight w) range from 0, indicating no interaction, to 1, indicating an interaction with high confidence.
-'''
->>>>>> > Stashed changes
