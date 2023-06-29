@@ -1,59 +1,96 @@
-from scipy.sparse.csgraph import dijkstra
 import numpy as np
 import networkx as nx
-from pathlib import Path
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import dijkstra
+# from pathlib import Path
+# import pandas as pd
 
-import pandas as pd
+
+def btb_implement(S, T, G):
+    # Step 1: Initialize the pathway P with nodes in S ∩ T
+    P = nx.Graph()
+    common_nodes = set(S) & set(T)
+    P.add_nodes_from(common_nodes)
+
+    # visited intially contains 0 things
+    visited = set()
+
+    while True:
+        # Step 2: Calculate the distance matrix D|S|×|T| between nodes in S and T
+        subgraph_S = G.subgraph(S)
+        subgraph_T = G.subgraph(T)
+        subgraph_nodes = list(subgraph_S.nodes) + list(subgraph_T.nodes)
+        node_indices = {node: i for i, node in enumerate(subgraph_nodes)}
+        adjacency_matrix = nx.to_scipy_sparse_matrix(
+            G, nodelist=subgraph_nodes, weight='weight')
+        distances = dijkstra(adjacency_matrix, directed=False, indices=[
+                             node_indices[node] for node in common_nodes])
+
+        # Step 3: Select the shortest path in D that connects a 'not visited' and a 'visited' node in P
+        # or a 'not visited' node in S to a 'not visited' node in T
+        path_exists = False
+        for i, source_node in enumerate(subgraph_S.nodes):
+            if source_node not in visited:
+                for j, target_node in enumerate(subgraph_T.nodes):
+                    if target_node not in visited:
+                        if distances[i, j] != np.inf:
+                            path = nx.shortest_path(
+                                G, source=source_node, target=target_node, weight='weight')
+                            path_exists = True
+                            break
+                if path_exists:
+                    break
+
+        if not path_exists:
+            for i, source_node in enumerate(subgraph_S.nodes):
+                if source_node not in visited:
+                    for j, target_node in enumerate(subgraph_S.nodes):
+                        if target_node != source_node:
+                            if distances[i, j] != np.inf:
+                                path = nx.shortest_path(
+                                    G, source=source_node, target=target_node, weight='weight')
+                                path_exists = True
+                                break
+                if path_exists:
+                    break
+
+        if not path_exists:
+            break
+
+        # Step 4: Add nodes and weighted edges of the selected path to P and mark nodes as 'visited' - ERRORS
+        edges = [(path[k], path[k+1], {'weight': G[path[k]]
+                  [path[k+1]]['weight']}) for k in range(len(path)-1)]
+        P.add_edges_from(edges)
+
+        visited.update(path)
+
+        # Step 5: Update D to include all distances to the nodes in P
+        subgraph_P = G.subgraph(P.nodes)
+        subgraph_nodes = list(subgraph_P.nodes)
+        node_indices = {node: i for i, node in enumerate(subgraph_nodes)}
+        adjacency_matrix = nx.adjacency_matrix(G, nodelist=subgraph_nodes)
+        distances = dijkstra(adjacency_matrix, directed=False, indices=[
+                             node_indices[node] for node in subgraph_nodes])
+
+    # Step 7: Export final pathway P
+    return P
 
 
-# read in source and target sets
-source_file = Path("./source.txt")
-target_file = Path("./target.txt")
-
+# Create a sample graph
 G = nx.Graph()
-# G is the graph and P is a subgraph of: S intersects T
-P = nx.Graph()
-# Example with 10 nodes and 15 edges
-# In multi_adj: The first label in a line is the source node label followed by the node degree d.
-# The next d lines are target node labels and optional edge data.
+G.add_weighted_edges_from([(1, 2, 0.5), (1, 3, 0.8), (2, 3, 1.2),
+                          (2, 4, 1.0), (3, 5, 0.7), (4, 5, 1.5), (5, 6, 0.9)])
 
+# Define the sets of nodes S and T
+S = [1, 2, 3]
+T = [4, 5, 6]
 
-# 1. Initialize a pathway P with all nodes and flag them as unvisited, having weights different from one another so there's no ties
-nodes = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'k', 'h', 'i')
-elist = [('a', 'b', 1.0), ('a', 'c', 0.4), ('b', 'd', 0.5), ('c', 'e', 0.7),
-         ('b', 'e', 0.8), ('b', 'f', 0.5), ('c', 'k',
-                                            0.3), ('d', 'e', 0.5), ('d', 'h', 0.2),
-         ('d', 'i', 1.0), ('f', 'e', 0.6), ('g', 'e', 0.1), ('e', 'h', 0.5), ('k', 'h', 0.7), ('k', 'i', 1.0)]
+# Call the btb_implement function
+pathway = btb_implement(S, T, G)
 
-source_set = (['a', 'b', 'c'])
-target_set = (['e', 'f', 'g'])
-G.add_weighted_edges_from(elist)  # add these and flag as unvisited
-
-
-# determine nodes on path between sources and targets
-print(list(G.neighbors('a')))
-
-# calculate score of intermediate nodes?
-
-
-'''
-adjacancy_matrix = []
-
-for source in source_set:
-    temp = []
-    for target in target_set:
-        temp.append(nx.dijkstra_path_length(G, source, target))
-    adjacancy_matrix.append(temp)
-
-print(adjacancy_matrix)
-'''
-# use Dijkstra’s algorithm to find the shortest weighted path between a and f (and repeat for all source and target nodes as well)
-# print(nx.dijkstra_path(G, {'a', 'b', 'c'}, {'e', 'f', 'g'}))
-
-# print(nx.dijkstra_path_length(G, 'a', 'f'))
-# print(nx.dijkstra_path(G, 'a', 'f'))
-
-print(P)
+# Print the nodes and edges of the final pathway
+print("Pathway Nodes:", pathway.nodes)
+print("Pathway Edges:", pathway.edges(data=True))
 
 
 def btb_implement(S, T, G):
