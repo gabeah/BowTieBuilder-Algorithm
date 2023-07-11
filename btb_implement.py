@@ -157,3 +157,24 @@ def btb_implement(S, T, G):
 
     # Step 7: Export final pathway P
     return P
+
+
+def equation_1(G, pathway, s, t):
+    path = pathway[(s, t)][0][0]
+    print(path)
+    if path == []:
+        return float('inf')
+    score = 1
+    index = 0
+    while index < len(path)-1:
+        score = score * G[path[index]][path[index+1]]['weight']
+        index += 1
+    return score
+
+
+# print(equation_1(G, pathway, 'a', 'f'))
+for source in S:
+    temp = []
+    for target in T:
+        temp.append(equation_1(G, pathway, source, target))
+    D.append(temp)
