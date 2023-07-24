@@ -1,180 +1,97 @@
-import numpy as np
 import networkx as nx
-from scipy.sparse import csr_matrix
-from scipy.sparse.csgraph import dijkstra
-# from pathlib import Path
-# import pandas as pd
 
 
-def btb_implement(S, T, G):
-    # Step 1: Initialize the pathway P with nodes in S ∩ T
+def find_pd(D, visited_S, visited_T, S, T, P):
+    min_dist = float('inf')
+    next_s = None
+    next_t = None
+
+    # Step 3: Find the shortest path connecting a 'not visited' node in S to a 'not visited' node in T
+    for s in S:
+        if s not in visited_S:
+            for t in T:
+                if t not in visited_T:
+                    if D[s][t] < min_dist:
+                        min_dist = D[s][t]
+                        next_s = s
+                        next_t = t
+
+    # Step 4: Add the selected path to P and flag the nodes as 'visited'
+    if next_s is not None and next_t is not None:
+        visited_S.add(next_s)
+        visited_T.add(next_t)
+        path = nx.dijkstra_path(G, next_s, next_t, weight='weight')
+        for node in path:
+            P.add_node(node)
+        for i in range(len(path) - 1):
+            P.add_edge(path[i], path[i + 1], weight=G[path[i]]
+                       [path[i + 1]]['weight'])
+
+    # Step 5: Update D to include all distances to the nodes in PD(s, t)
+    for s in S:
+        for t in T:
+            D[s][t] = min(D[s][t], D[s][next_s] + D[next_s]
+                          [next_t] + D[next_t][t])
+
+
+def bowtie_builder(G, S, T):
+    # Step 1: Initialize the pathway P with all nodes S ∩ T, and flag all nodes in S ∩ T as 'not visited'.
     P = nx.Graph()
     common_nodes = set(S) & set(T)
     P.add_nodes_from(common_nodes)
+    visited_S = set()
+    visited_T = set()
 
-    # visited intially contains 0 things
-    visited = set()
+    # Step 2 and Step 6: Calculate the distance matrix D and repeat until every node in S is connected to every node in T in P
+    while visited_S != common_nodes or visited_T != common_nodes:
+        D = {}
+        for s in S:
+            D[s] = {}
+            for t in T:
+                D[s][t] = nx.dijkstra_path_length(G, s, t, weight='weight')
 
-    while True:
-        # Step 2: Calculate the distance matrix D|S|×|T| between nodes in S and T
-        subgraph_S = G.subgraph(S)
-        subgraph_T = G.subgraph(T)
-        subgraph_nodes = list(subgraph_S.nodes) + list(subgraph_T.nodes)
-        node_indices = {node: i for i, node in enumerate(subgraph_nodes)}
-        adjacency_matrix = nx.to_scipy_sparse_matrix(
-            G, nodelist=subgraph_nodes, weight='weight')
-        distances = dijkstra(adjacency_matrix, directed=False, indices=[
-                             node_indices[node] for node in common_nodes])
+        # Step 3 to Step 5: Find the shortest path and update P and D
+        find_pd(D, visited_S, visited_T, S, T, P)
 
-        # Step 3: Select the shortest path in D that connects a 'not visited' and a 'visited' node in P
-        # or a 'not visited' node in S to a 'not visited' node in T
-        path_exists = False
-        for i, source_node in enumerate(subgraph_S.nodes):
-            if source_node not in visited:
-                for j, target_node in enumerate(subgraph_T.nodes):
-                    if target_node not in visited:
-                        if distances[i, j] != np.inf:
-                            path = nx.shortest_path(
-                                G, source=source_node, target=target_node, weight='weight')
-                            path_exists = True
-                            break
-                if path_exists:
-                    break
-
-        if not path_exists:
-            for i, source_node in enumerate(subgraph_S.nodes):
-                if source_node not in visited:
-                    for j, target_node in enumerate(subgraph_S.nodes):
-                        if target_node != source_node:
-                            if distances[i, j] != np.inf:
-                                path = nx.shortest_path(
-                                    G, source=source_node, target=target_node, weight='weight')
-                                path_exists = True
-                                break
-                if path_exists:
-                    break
-
-        if not path_exists:
-            break
-
-        # Step 4: Add nodes and weighted edges of the selected path to P and mark nodes as 'visited' - ERRORS
-        edges = [(path[k], path[k+1], {'weight': G[path[k]]
-                  [path[k+1]]['weight']}) for k in range(len(path)-1)]
-        P.add_edges_from(edges)
-
-        visited.update(path)
-
-        # Step 5: Update D to include all distances to the nodes in P
-        subgraph_P = G.subgraph(P.nodes)
-        subgraph_nodes = list(subgraph_P.nodes)
-        node_indices = {node: i for i, node in enumerate(subgraph_nodes)}
-        adjacency_matrix = nx.adjacency_matrix(G, nodelist=subgraph_nodes)
-        distances = dijkstra(adjacency_matrix, directed=False, indices=[
-                             node_indices[node] for node in subgraph_nodes])
-
-    # Step 7: Export final pathway P
+    # Export final pathway P.
     return P
 
 
-# Create a sample graph
-G = nx.Graph()
-G.add_weighted_edges_from([(1, 2, 0.5), (1, 3, 0.8), (2, 3, 1.2),
-                          (2, 4, 1.0), (3, 5, 0.7), (4, 5, 1.5), (5, 6, 0.9)])
+# Example usage:
+def main():
+   # Create a sample graph]
+    G = nx.Graph()
+    G.add_edge('a', 'd', weight=0.5)
+    G.add_edge('a', 'c', weight=0.8)
+    G.add_edge('b', 'c', weight=1.2)
+    G.add_edge('b', 'd', weight=1.0)
+    G.add_edge('c', 'e', weight=0.7)
+    G.add_edge('d', 'e', weight=1.5)
+    G.add_edge('e', 'f', weight=0.9)
+    G.add_edge('a', 'h', weight=0.2)
+    G.add_edge('h', 'd', weight=0.1)
 
-# Define the sets of nodes S and T
-S = [1, 2, 3]
-T = [4, 5, 6]
+    # Define the sets of nodes S and T, containing strings
+    S = ['a', 'b', 'c']
+    T = ['d', 'e', 'f']
 
-# Call the btb_implement function
-pathway = btb_implement(S, T, G)
+    # Call the Bowtie Builder Algorithm
+    bowtie_pathway = bowtie_builder(G, S, T)
 
-# Print the nodes and edges of the final pathway
-print("Pathway Nodes:", pathway.nodes)
-print("Pathway Edges:", pathway.edges(data=True))
-
-
-def btb_implement(S, T, G):
-    # Step 1: Initialize the pathway P with nodes in S ∩ T
-    P = nx.Graph()
-    common_nodes = set(S) & set(T)
-    P.add_nodes_from(common_nodes)
-    visited = set()
-
-    while True:
-        # Step 2: Calculate the distance matrix D|S|×|T| between nodes in S and T
-        subgraph_S = G.subgraph(S)
-        subgraph_T = G.subgraph(T)
-        subgraph_nodes = list(subgraph_S.nodes) + \
-            list(subgraph_T.nodes)  # all nodes in S+T
-        node_indices = {node: i for i, node in enumerate(subgraph_nodes)}
-        adjacency_matrix = nx.adjacency_matrix(G, nodelist=subgraph_nodes)
-        distances = dijkstra(adjacency_matrix, directed=False, indices=[
-                             node_indices[node] for node in common_nodes])
-
-        # Step 3: Select the shortest path in D that connects a 'not visited' and a 'visited' node in P
-        # or a 'not visited' node in S to a 'not visited' node in T
-        path_exists = False
-        for i, source_node in enumerate(subgraph_S.nodes):
-            if source_node not in visited:
-                for j, target_node in enumerate(subgraph_T.nodes):
-                    if target_node not in visited:
-                        if distances[i, j] != np.inf:
-                            path = nx.shortest_path(
-                                G, source=source_node, target=target_node, weight='weight')
-                            path_exists = True
-                            break
-                if path_exists:
-                    break
-
-        if not path_exists:
-            for i, source_node in enumerate(subgraph_S.nodes):
-                if source_node not in visited:
-                    for j, target_node in enumerate(subgraph_S.nodes):
-                        if target_node != source_node:
-                            if distances[i, j] != np.inf:
-                                path = nx.shortest_path(
-                                    G, source=source_node, target=target_node, weight='weight')
-                                path_exists = True
-                                break
-                if path_exists:
-                    break
-
-        if not path_exists:
-            break
-
-        # Step 4: Add nodes and edges of the selected path to P and mark nodes as 'visited'
-        P.add_nodes_from(path)
-        P.add_edges_from(nx.utils.pairwise(path))
-        visited.update(path)
-
-        # Step 5: Update D to include all distances to the nodes in P
-        subgraph_P = G.subgraph(P.nodes)
-        subgraph_nodes = list(subgraph_P.nodes)
-        node_indices = {node: i for i, node in enumerate(subgraph_nodes)}
-        adjacency_matrix = nx.adjacency_matrix(G, nodelist=subgraph_nodes)
-        distances = dijkstra(adjacency_matrix, directed=False, indices=[
-                             node_indices[node] for node in subgraph_nodes])
-
-    # Step 7: Export final pathway P
-    return P
+    # Print the final pathway P
+    print("Final Pathway P:")
+    print(bowtie_pathway.edges)
+    print(bowtie_pathway.nodes)
 
 
-def equation_1(G, pathway, s, t):
-    path = pathway[(s, t)][0][0]
-    print(path)
-    if path == []:
-        return float('inf')
-    score = 1
-    index = 0
-    while index < len(path)-1:
-        score = score * G[path[index]][path[index+1]]['weight']
-        index += 1
-    return score
+def iterate_main_function(iterations):
+    for i in range(iterations):
+        print(f"Iteration {i + 1}:")
+        main()
+        print("\n")
 
 
-# print(equation_1(G, pathway, 'a', 'f'))
-for source in S:
-    temp = []
-    for target in T:
-        temp.append(equation_1(G, pathway, source, target))
-    D.append(temp)
+if __name__ == "__main__":
+    # Call the iterate_main_function to run main() 5 to 10 times
+    iterations = 4  # You can change this to 10 if you want 10 iterations
+    iterate_main_function(iterations)
