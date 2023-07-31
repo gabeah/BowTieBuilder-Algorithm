@@ -28,7 +28,7 @@ def add_entry_to_D(G, entry, D, S, T, D_path):
     return D
 
 
-def find_pd(D_path, visited, S, T, D, P):
+def find_pd(D_path, visited, D, P):
     if visited == []:  # if no node has been visited
         node1 = 0
         node2 = 0
@@ -79,7 +79,7 @@ def find_pd(D_path, visited, S, T, D, P):
                     if node1 == 0 or D[i][j] < D[node1][node2]:
                         node1 = i
                         node2 = j
-                        # visited.extend([node1, node2])
+                        visited.extend([node1, node2])
 
         print(D_path)
         path = D_path[node1][node2]
@@ -104,7 +104,6 @@ def find_pd(D_path, visited, S, T, D, P):
 
 # 4. Add the nodes and edges of the selected path to P and flag all nodes in the pathway as 'visited'.
 
-    print(P.edges)
 
 # 5. Update D to include all distances to the nodes in P^D(s, t) (visited??). takes D, return renewed D
 # the nodes in that path are flagged as 'visited', The method terminates when all nodes in D are flagged as 'visited'?? ,
@@ -153,11 +152,9 @@ def main():
 # 3. Select the shortest path in D that connects a 'not visited' and a 'visited' node in P, or, if no such path exists, a 'not visited' node in S to a 'not visited' node in T.
 # Find P^D(s,t) and add it to the pathway P
 
-    while set(S).intersection(visited) != S and set(T).intersection(visited) != T:
+    while set(S).intersection(visited) != set(S) or set(T).intersection(visited) != set(T):
         # STOP when S and T are visited
-        find_pd(D_path, visited, S, T, D, P)
-        # print(P.edges)
-        # print(P.nodes)
+        find_pd(D_path, visited, D, P)
         for node in visited:
             if node not in D.keys() and node not in S and node not in T:
                 add_entry_to_D(G, node, D, S, T, D_path)
@@ -166,5 +163,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-'''
