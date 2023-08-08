@@ -4,16 +4,63 @@ import networkx as nx
 from pathlib import Path
 import sys
 import pandas as pd
+from pathlib import Path
+import argparse
 
-# read in source and target sets
-'''
-source_file = Path("./source.txt")
-target_file = Path("./target.txt")
 
-# determine nodes on path between sources and targets
-print(list(G.neighbors('a')))
-'''
-# pass in the targets and sources to know the order, iterate thru the targets list
+def parse_arguments():
+    """
+    Process command line arguments.
+    @return arguments
+    """
+    parser = argparse.ArgumentParser(
+        description="BowTieBuilder pathway reconstruction"
+    )
+    parser.add_argument("--network", type=Path, required=True,
+                        help="Path to the network file with ',' delimited node pairs")
+    parser.add_argument("--source_set", type=Path, required=True,
+                        help="Path to the sources file")
+    parser.add_argument("--target_set", type=Path, required=True,
+                        help="Path to the targets file")
+    parser.add_argument("--output", type=Path, required=True,
+                        help="Path to the output file that will be written")
+
+    return parser.parse_args()
+
+
+def process_input(input_path):
+    """
+    Process input data with the format 'a', 'b', weight.
+    @param input_path: Path to the input file.
+    @return: List of tuples containing (source, target, weight).
+    """
+    with open(input_path, 'r') as file:
+        lines = file.readlines()
+        data = [line.strip().split(', ') for line in lines]
+
+    parsed_data = [(source, target, float(weight))
+                   for source, target, weight in data]
+    return parsed_data
+
+
+def process_set(input_path):
+    """
+    Process a set from a file, assuming one element per line.
+    @param input_path: Path to the input file.
+    @return: List of elements from the file.
+    """
+    with open(input_path, 'r') as file:
+        lines = file.readlines()
+        elements = [line.strip() for line in lines]
+
+    return elements
+
+
+def parse_output_file(output_file: Path):
+    with output_file.open() as file:
+        nodes = [line.strip() for line in file]
+
+    return nodes
 
 
 def add_entry_to_D(G, entry, D, S, T, D_path):
@@ -98,18 +145,63 @@ def find_pd(D_path, visited, D, P):
 # while set of visited is not set of all nodes in D, add 1 by 1 node in visited set to D
 # add the distance of the new node to D, not the node
 
-
 # 6. Repeat steps 2–5 until every node in S is connected to some node in T, and vice versa if such a path exists in G.
 
-
 # 4. Add the nodes and edges of the selected path to P and flag all nodes in the pathway as 'visited'.
-
-
 # 5. Update D to include all distances to the nodes in P^D(s, t) (visited??). takes D, return renewed D
 # the nodes in that path are flagged as 'visited', The method terminates when all nodes in D are flagged as 'visited'?? ,
 # or, if for the remaining nodes, no path to any other node in S∩T exists.
 
 
+def bowtie_builder(network_file: Path, source_set_file: Path, target_set_file: Path, output_file: Path):
+    if not network_file.exists():
+        raise OSError(f"Network file {str(network_file)} does not exist")
+    if not source_set_file.exists():
+        raise OSError(f"Source set file {str(source_set_file)} does not exist")
+    if not target_set_file.exists():
+        raise OSError(f"Target set file {str(target_set_file)} does not exist")
+    if output_file.exists():
+        print(f"Output files {str(output_file)} will be overwritten")
+
+    # Create the parent directories for the output file if needed
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Read the list of nodes in source and target sets
+    P = nx.Graph()
+
+    G = nx.Graph()
+    with network_file.open() as network_f:
+        for line in network_f:
+            line = line.strip()
+            endpoints, weight = line.split(", ")
+            source, target = endpoints.split("|")
+            G.add_edge(source, target, weight=float(weight))
+
+    S = process_set(source_set_file)
+    T = process_set(target_set_file)
+
+    P.add_nodes_from(set(S) & set(T))
+    visited = []
+    D_path = {}
+    D = {}
+
+    for i in S:
+        D_path[i] = {}
+        D[i] = {}
+        for j in T:
+            D_path[i][j] = nx.dijkstra_path(G, i, j, weight='weight')
+            D[i][j] = nx.dijkstra_path_length(G, i, j, weight='weight')
+
+    while set(S).intersection(visited) != set(S) or set(T).intersection(visited) != set(T):
+        find_pd(D_path, visited, D, P)
+        for node in visited:
+            if node not in D.keys() and node not in S and node not in T:
+                add_entry_to_D(G, node, D, S, T, D_path)
+
+    return P
+
+
+'''
 def main():
     # Create a sample graph
     P = nx.Graph()
@@ -159,7 +251,32 @@ def main():
             if node not in D.keys() and node not in S and node not in T:
                 add_entry_to_D(G, node, D, S, T, D_path)
     return P
+'''
 
-
+# Example usage
 if __name__ == "__main__":
-    main()
+
+    args = parse_arguments()
+
+    network_file_path = process_input(args.network)
+    print("Processed network data:", network_file_path)
+
+    source_set_file_path = process_set(args.source_set)
+    target_set_file_path = process_set(args.target_set)
+
+    print("Source set:", source_set_file_path)
+    print("Target set:", target_set_file_path)
+
+    output_file_path = Path("path/to/output_file.txt")
+    parsed_nodes = parse_output_file(output_file_path)
+    print("Parsed nodes:", parsed_nodes)
+
+'''
+    network_file_path = Path("path/to/network_file.txt")
+    source_set_file_path = Path("path/to/source_set.txt")
+    target_set_file_path = Path("path/to/target_set.txt")
+    output_file_path = Path("path/to/output_file.txt")
+'''
+pathway = bowtie_builder(network_file_path, source_set_file_path,
+                         target_set_file_path, output_file_path)
+print("Pathway:", pathway.edges(data=True))
