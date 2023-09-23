@@ -1,26 +1,28 @@
 import networkx as nx
-import argparse
 from pathlib import Path
 
-def parse_arguments():
-    """
-    Process command line arguments.
-    @return arguments
-    """
-    parser = argparse.ArgumentParser(
-        description="BowTieBuilder pathway reconstruction"
-    )
-    parser.add_argument("--edges", type=Path, required=True,
-                        help="Path to the edges file")
-    parser.add_argument("--sources", type=Path, required=True,
-                        help="Path to the sources file")
-    parser.add_argument("--targets", type=Path, required=True,
-                        help="Path to the targets file")
-    parser.add_argument("--output", type=Path, required=True,
-                        help="Path to the output file that will be written")
+"""
+Steps:
 
-    return parser.parse_args()
+1. Initialize the pathway P with all nodes S ∩ T, and flag all nodes in S ∩ T as 'not visited'.
 
+2. Calculate the distance matrix D|S|*|T|between the nodes in S and T with Dijkstra's algorithm - determining the maximal scoring (Equation 1 = multiplying the individual confidence values of the utilized edges) paths between the nodes in S and the nodes in T with Dijkstra's algorithm, where the distance is set to ∞ if no path exists. 
+
+3. Select the shortest path in D that connects a 'not visited' and a 'visited' node in P, or, if no such path exists, a 'not visited' node in S to a 'not visited' node in T. 
+
+4. Add the nodes and edges of the selected path to P and flag all nodes in the pathway as 'visited'.
+
+In the next stage of the inference, the highest scoring path PD(s, t) in D that connects a 'not visited' node to a 'visited' node is added. If no such path exists the two 'not visited' nodes with the highest scoring path PD(s, t) in D are connected to each other and, likewise, the path PD(s, t) is added to P.
+
+5. Update D to include all distances to the nodes in PD(s, t).
+
+6. Repeat the steps 2-5 until every node in S is connected to some node in T, and vice versa if such a path exists in G.
+
+Subsequently, the nodes in that path are flagged as 'visited' and D is updated to include all distances to the nodes in PD(s, t). This step is reiterated, in each stage integrating 'not visited' source and target nodes. The method terminates when all nodes in S union T are flagged as 'visited', or, if for the remaining nodes, no path to any other node in S union T exists. Then the final signaling pathway P is returned. 
+
+"""
+
+# Implementation
 
 # functions for reading input files
 def read_network(network_file : Path) -> list:
@@ -70,7 +72,7 @@ def check_path(network : nx.DiGraph, nodes : list, not_visited : list) -> bool:
     print(f"Nodes: {nodes}")
     print(f"Not visited: {not_visited}")
     for n in not_visited:
-        for i in set(nodes) - set(not_visited):
+        for i in nodes:
             if nx.has_path(network, i, n):
                 return True
     return False
@@ -96,11 +98,13 @@ def BTB_main(Network : nx.DiGraph, source : list, target : list) -> nx.DiGraph:
     D = {}
     for s in source:
         for t in target:
+            # If there exists a path between s and t, then calculate the shortest distance between them
             if nx.has_path(Network, s, t):
                 D[(s, t)] = [nx.dijkstra_path_length(Network, s, t), nx.dijkstra_path(Network, s, t)]
             else:
+                # There is no path between s and t, then set the distance to infinity
                 D[(s, t)] = [float('inf'), []]
-                print(f"There is no path between {s} and {t}")
+                print(f"There is no path between {i} and {j}")
                 
     print(f'Original D: {D}')
 
@@ -212,48 +216,20 @@ def write_output(output_file, P):
             f.write(edge[0] + '\t' + edge[1] + '\n')
 
 # -----------Test Case---------------- #
+edges = Path('./input/edges2.txt')
+source_file = Path('./input/source2.txt')
+target_file = Path('./input/target2.txt')
+output_file = Path('./output/output2.txt')
 
-def btb(edges : Path, sources : Path, targets : Path, output_file : Path):
-    """
-    Run BowTieBuilder pathway reconstruction.
-    @param network_file: Path to the network file
-    @param source_target_file: Path to the source/target file
-    @param output_file: Path to the output file that will be written
-    """
-    if not edges.exists():
-        raise OSError(f"Edges file {str(edges)} does not exist")
-    if not sources.exists():
-        raise OSError(f"Sources file {str(sources)} does not exist")
-    if not targets.exists():
-        raise OSError(f"Targets file {str(targets)} does not exist")
-    
+network = read_network(edges)
+source, target = read_source_target(source_file, target_file)
 
-    if output_file.exists():
-        print(f"Output files {str(output_file)} (nodes) will be overwritten")
+print(f"Network: {network}")
+print(f"Source: {source}")
+print(f"Target: {target}")
 
-    # Create the parent directories for the output file if needed
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-    
-    
-    network = read_network(edges)
-    source, target = read_source_target(sources, targets)
-    Network = construct_network(network, source, target)
+Network = construct_network(network, source, target)
 
-    write_output(output_file, BTB_main(Network, source, target))
+write_output(output_file, BTB_main(Network, source, target))
 
-def main():
-    """
-    Parse arguments and run pathway reconstruction
-    """
-    args = parse_arguments()
-    btb(
-        args.edges,
-        args.sources,
-        args.targets,
-        args.output
-    )
 
-if __name__ == "__main__":
-    main()
-    
-# test: python btb.py --edges ./input/edges2.txt --sources ./input/source2.txt --targets ./input/target2.txt --output ./output/output2.txt
