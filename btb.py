@@ -32,7 +32,7 @@ def read_network(network_file : Path) -> list:
             network.append((line[0], line[1], float(line[2])))
     return network
 
-def read_source_target(source_file : Path, target_file : Path) -> list:
+def read_source_target(source_file : Path, target_file : Path) -> tuple:
     source = []
     target = []
     with open(source_file, 'r') as f:
@@ -85,7 +85,6 @@ def BTB_main(Network : nx.DiGraph, source : list, target : list) -> nx.DiGraph:
     # Initialize the pathway P with all nodes S union T, and flag all nodes in S union T as 'not visited'.
     not_visited = []
     visited = []
-    nodes = list(Network.nodes)
 
     for i in source:
         not_visited.append(i)
@@ -94,14 +93,18 @@ def BTB_main(Network : nx.DiGraph, source : list, target : list) -> nx.DiGraph:
         
     # D is the distance matrix
     D = {}
-    for s in source:
-        for t in target:
-            if nx.has_path(Network, s, t):
-                D[(s, t)] = [nx.dijkstra_path_length(Network, s, t), nx.dijkstra_path(Network, s, t)]
+    for i in source:
+        # run a single_souce_dijsktra to find the shortest path from source to every other nodes
+        # val is the shortest distance from source to every other nodes
+        # path is the shortest path from source to every other nodes
+        val, path = nx.single_source_dijkstra(Network, i)
+        for j in target:
+            # if there is a path between i and j, then add the distance and the path to D
+            if j in val:
+                D[i, j] = [val[j], path[j]]
             else:
-                D[(s, t)] = [float('inf'), []]
-                print(f"There is no path between {s} and {t}")
-                
+                D[i, j] = [float('inf'), []]
+                       
     print(f'Original D: {D}')
 
     # source_target is the union of source and target
@@ -110,18 +113,14 @@ def BTB_main(Network : nx.DiGraph, source : list, target : list) -> nx.DiGraph:
     # Index is for debugging (will be removed later)
     index = 0
     
-    # need to check if there is a path between source and target (not implemented yet)
+    # need to check if there is a path between source and target 
     while not_visited != []:
         print("\n\nIteration: ", index)
         print(f"Current not visited nodes: {not_visited}")
         
-        # Check if there is a path between remaining nodes and not visited nodes
-        if not check_path(Network, nodes, not_visited):
-            break
-                
         # Set initial values
         min_value = float('inf')
-        current_path = ()
+        current_path = []
         current_s = ""
         current_t = ""
         
@@ -145,7 +144,6 @@ def BTB_main(Network : nx.DiGraph, source : list, target : list) -> nx.DiGraph:
             # Add the nodes in the current path to visited
             for i in current_path:
                 visited.append(i)
-                nodes.remove(i)
         else:
             # If there are visited nodes, then select the shortest path between a visited node and a not visited node
             for v in visited:
@@ -170,14 +168,18 @@ def BTB_main(Network : nx.DiGraph, source : list, target : list) -> nx.DiGraph:
             # Add the nodes in the current path to visited
             for i in current_path:
                 visited.append(i)
-                if i in nodes:
-                    nodes.remove(i)
            
             # Remove the nodes in the current path from not_visited
             for i in [current_s, current_t]:
                 if i in not_visited:
                     not_visited.remove(i)
                     visited.append(i)
+        
+        # Note that if there is no valid path between visited nodes and not visited nodes, then min_value will be infinity
+        # In this case, we exit the loop
+        if min_value == float('inf'):
+            print("There is no path between source and target")
+            break
                     
         # Update D
         for i in current_path:
@@ -256,4 +258,4 @@ def main():
 if __name__ == "__main__":
     main()
     
-# test: python btb.py --edges ./input/edges2.txt --sources ./input/source2.txt --targets ./input/target2.txt --output ./output/output2.txt
+# test: python btb.py --edges ./input/edges1.txt --sources ./input/source1.txt --targets ./input/target1.txt --output ./output/output1.txt
