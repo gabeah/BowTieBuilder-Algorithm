@@ -75,6 +75,51 @@ def check_path(network : nx.DiGraph, nodes : list, not_visited : list) -> bool:
                 return True
     return False
 
+def check_visited_not_visited(visited : list, not_visited : list, D : dict) -> tuple:
+    # Set initial values
+    min_value = float('inf')
+    current_path = []
+    current_s = ""
+    current_t = ""
+    for v in visited:
+        for n in not_visited:
+                    # Since we don't know if the path is from v to n or from n to v, we need to check both cases
+                    if (v, n) in D:
+                        if D[(v, n)][0] < min_value:
+                            min_value = D[(v, n)][0]
+                            current_path = D[(v, n)][1]
+                            current_s = v
+                            current_t = n
+                    if (n, v) in D:
+                        if D[(n, v)][0] < min_value:
+                            min_value = D[(n, v)][0]
+                            current_path = D[(n, v)][1]
+                            current_s = n
+                            current_t = v
+                            
+    return current_path, current_s, current_t, min_value
+
+def check_not_visited_not_visited(not_visited : list, D : dict) -> tuple:
+    # Set initial values
+    min_value = float('inf')
+    current_path = []
+    current_s = ""
+    current_t = ""
+    for i in range(len(not_visited)):
+        for j in range(i + 1, len(not_visited)):
+            if (not_visited[i], not_visited[j]) in D:
+                if D[(not_visited[i], not_visited[j])][0] < min_value:
+                    min_value = D[(not_visited[i], not_visited[j])][0]
+                    current_path = D[(not_visited[i], not_visited[j])][1]
+                    current_s = not_visited[i]
+                    current_t = not_visited[j]
+                if (not_visited[j], not_visited[i]) in D:
+                    if D[(not_visited[j], not_visited[i])][0] < min_value:
+                        min_value = D[(not_visited[j], not_visited[i])][0]
+                        current_path = D[(not_visited[j], not_visited[i])][1]
+                        current_s = not_visited[j]
+                        current_t = not_visited[i]
+    return current_path, current_s, current_t, min_value
 
 def BTB_main(Network : nx.DiGraph, source : list, target : list) -> nx.DiGraph:
     # P is the returned pathway
@@ -82,6 +127,7 @@ def BTB_main(Network : nx.DiGraph, source : list, target : list) -> nx.DiGraph:
     P.add_nodes_from(source)
     P.add_nodes_from(target)
 
+    # Step 1
     # Initialize the pathway P with all nodes S union T, and flag all nodes in S union T as 'not visited'.
     not_visited = []
     visited = []
@@ -92,6 +138,7 @@ def BTB_main(Network : nx.DiGraph, source : list, target : list) -> nx.DiGraph:
         not_visited.append(j)
         
     # D is the distance matrix
+    # Format
     D = {}
     for i in source:
         # run a single_souce_dijsktra to find the shortest path from source to every other nodes
@@ -111,7 +158,7 @@ def BTB_main(Network : nx.DiGraph, source : list, target : list) -> nx.DiGraph:
     source_target = source + target
 
     # Index is for debugging (will be removed later)
-    index = 0
+    index = 1
     
     # need to check if there is a path between source and target 
     while not_visited != []:
@@ -124,56 +171,37 @@ def BTB_main(Network : nx.DiGraph, source : list, target : list) -> nx.DiGraph:
         current_s = ""
         current_t = ""
         
-        # If there is no visited node, then select the shortest path between source and target
-        if visited == []:
-            # Since now D contains all the shortest paths between source and target, we can just iterate through D to find the shortest path
-            for key in D:
-                # If the distance is smaller than the current min_value, then update the min_value and the current_path
-                if D[key][0] < min_value:
-                    min_value = D[key][0]
-                    current_path = D[key][1]
-                    current_s = key[0]
-                    current_t = key[1]
-
-
-            # Set the distance to infinity
-            D[(current_s, current_t)] = [float('inf'), []]
-            # Remove the nodes in the current path from not_visited
-            not_visited.remove(current_path[0])
-            not_visited.remove(current_path[-1])
-            # Add the nodes in the current path to visited
-            for i in current_path:
-                visited.append(i)
-        else:
-            # If there are visited nodes, then select the shortest path between a visited node and a not visited node
-            for v in visited:
-                for n in not_visited:
-                    # Since we don't know if the path is from v to n or from n to v, we need to check both cases
-                    if (v, n) in D:
-                        if D[(v, n)][0] < min_value:
-                            min_value = D[(v, n)][0]
-                            current_path = D[(v, n)][1]
-                            current_s = v
-                            current_t = n
-                    if (n, v) in D:
-                        if D[(n, v)][0] < min_value:
-                            min_value = D[(n, v)][0]
-                            current_path = D[(n, v)][1]
-                            current_s = n
-                            current_t = v
-
-            # Set the distance to infinity
-            D[(current_s, current_t)] = [float('inf'), []]
+        # First checking whether there exists a path from visited nodes to not visited nodes or vise versa
+        if visited != []:
+            current_path, current_s, current_t, min_value = check_visited_not_visited(visited, not_visited, D)
             
-            # Add the nodes in the current path to visited
-            for i in current_path:
-                visited.append(i)
-           
-            # Remove the nodes in the current path from not_visited
-            for i in [current_s, current_t]:
-                if i in not_visited:
-                    not_visited.remove(i)
+            # if such a path exists, then we need to update D and P
+            if min_value != float('inf'):
+                # Set the distance to infinity
+                D[(current_s, current_t)] = [float('inf'), []]
+                
+                # Add the nodes in the current path to visited
+                for i in current_path:
                     visited.append(i)
+            
+                # Remove the nodes in the current path from not_visited
+                for i in [current_s, current_t]:
+                    if i in not_visited:
+                        not_visited.remove(i)
+                        visited.append(i)
+    
+        # Find a path from a not-visited node to a not-visited node
+        if min_value == float('inf') and len(not_visited) > 1:
+                current_path, current_s, current_t, min_value = check_not_visited_not_visited(not_visited, D)
+                # If such a path exists, then we need to update D and P
+                if min_value != float('inf'):
+                    D[(current_s, current_t)] = [float('inf'), []]
+                    # Remove the nodes in the current path from not_visited
+                    not_visited.remove(current_path[0])
+                    not_visited.remove(current_path[-1])
+                    # Add the nodes in the current path to visited
+                    for i in current_path:
+                        visited.append(i)
         
         # Note that if there is no valid path between visited nodes and not visited nodes, then min_value will be infinity
         # In this case, we exit the loop
@@ -200,6 +228,7 @@ def BTB_main(Network : nx.DiGraph, source : list, target : list) -> nx.DiGraph:
         print(f"Current selected path: {current_path}")
         print(f"Update D as: {D}")
         print(f"Update visited nodes as: {visited}")
+        print(f"Update not visited nodes as: {not_visited}")
         print(f"Add edges to P as: {P.edges}")
         
         index += 1
@@ -213,9 +242,7 @@ def write_output(output_file, P):
         for edge in P.edges:
             f.write(edge[0] + '\t' + edge[1] + '\n')
 
-# -----------Test Case---------------- #
-
-def btb(edges : Path, sources : Path, targets : Path, output_file : Path):
+def btb_wrapper(edges : Path, sources : Path, targets : Path, output_file : Path):
     """
     Run BowTieBuilder pathway reconstruction.
     @param network_file: Path to the network file
@@ -237,18 +264,21 @@ def btb(edges : Path, sources : Path, targets : Path, output_file : Path):
     output_file.parent.mkdir(parents=True, exist_ok=True)
     
     
-    network = read_network(edges)
+    edge_list = read_network(edges)
     source, target = read_source_target(sources, targets)
-    Network = construct_network(network, source, target)
+    network = construct_network(edge_list, source, target)
 
-    write_output(output_file, BTB_main(Network, source, target))
+    write_output(output_file, BTB_main(network, source, target))
 
 def main():
     """
     Parse arguments and run pathway reconstruction
     """
     args = parse_arguments()
-    btb(
+    
+    # path length - l
+    # test_mode - default to be false
+    btb_wrapper(
         args.edges,
         args.sources,
         args.targets,
