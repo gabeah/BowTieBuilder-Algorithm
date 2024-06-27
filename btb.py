@@ -32,6 +32,7 @@ def read_network(network_file : Path) -> list:
                 line = line.split('\t')
                 network.append((line[0], line[1], float(line[2])))
         except Exception as err:
+            print("HELP OH GOD AN ERROR")
             print(err)
     return network
 
