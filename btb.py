@@ -26,10 +26,13 @@ def parse_arguments():
 def read_network(network_file : Path) -> list:
     network = []
     with open(network_file, 'r') as f:
-        for line in (f):
-            line = line.strip()
-            line = line.split('\t')
-            network.append((line[0], line[1], float(line[2])))
+        try:
+            for line in (f):
+                line = line.strip()
+                line = line.split('\t')
+                network.append((line[0], line[1], float(line[2])))
+        except Exception as err:
+            print(err)
     return network
 
 def read_source_target(source_file : Path, target_file : Path) -> tuple:
